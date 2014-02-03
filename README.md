@@ -17,13 +17,13 @@ Differences from Swindle:
 GLS is based on Greg Sullivan's <a
 href="https://github.com/gregsgit/glos">GLOS</a>, that was witten for
 scheme48. It has the same API, but without implemetation of own object system 
-(glos-records). So GLS is not `generic little object system', but simply
-`generic little system'. But I added support for racket/class: you may use
+(glos-records). So GLS is not "generic little object system", but simply
+"generic little system". But I added support for racket/class: you may use
 class intead of type predicate and GLS corretly supports subtypes
 (subclasses).
 
-Sorry for bad documentation: for API look into main.rkt, for examples of use
--- test.rkt.
+Sorry for bad documentation: for API look into <a href=https://github.com/Kalimehtar/gls/blob/master/gls/main.rkt> main.rkt</a>, for examples of use
+-- <a href=https://github.com/Kalimehtar/gls/blob/master/gls/test.rkt>test.rkt</a>.
 
 Some description of GLOS is in the paper <a
 href="ref-dyn-patterns.pdf">ref-dyn-patterns</a>. 
