@@ -7,7 +7,7 @@ It provides multiple dispatch for Scheme.
 
 Differences from Swindle:
 
-- Doesn't force you to change all. GLS is a small colletian with a douzen of
+- Doesn't force you to change all. GLS is a small collection with a douzen of
   functions in API. It only adds generic functions.
 
 - It based upon types, not classes. You may dispatch you function on any
