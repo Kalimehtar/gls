@@ -11,8 +11,8 @@ Differences from Swindle:
   functions in API. It only adds generic functions.
 
 - It based upon types, not classes. You may dispatch you function on any
-  predicate you may imagine: exact-integer?, (real-in 0 10), (and? stream?
-(not/c stream-ampty?)), ...
+  predicate you may imagine: `exact-integer?`, `(real-in 0 10)`, 
+`(and? stream? (not/c stream-ampty?))`, ...
 
 GLS is based on Greg Sullivan's <a
 href="https://github.com/gregsgit/glos">GLOS</a>, that was witten for
