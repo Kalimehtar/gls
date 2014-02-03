@@ -3,7 +3,7 @@ gls
 
 GLS - Generic Little (Object, Type, Anything, ...) System
 
-It provides multiple dispatch for Scheme.
+It provides multiple dispatch for Racket.
 
 Differences from Swindle:
 
