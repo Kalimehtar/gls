@@ -26,8 +26,8 @@ Sorry for bad documentation: for API look into <a href=https://github.com/Kalime
 -- <a href=https://github.com/Kalimehtar/gls/blob/master/gls/test.rkt>test.rkt</a>.
 
 Some description of GLOS is in the paper <a
-href="ref-dyn-patterns.pdf">ref-dyn-patterns</a>. 
+href="https://github.com/gregsgit/glos/blob/master/ref-dyn-patterns.pdf">ref-dyn-patterns</a>. 
 
-Also, slides in <a href="proglangsandsofteng.pdf">proglangsandsofteng</a> work
+Also, slides in <a href="https://github.com/gregsgit/glos/blob/master/proglangsandsofteng.pdf">proglangsandsofteng</a> work
 through some examples using GLOS.
 
