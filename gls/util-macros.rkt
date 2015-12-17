@@ -10,11 +10,11 @@
      (?next ?out . ?more))))
 
 ;; and convert to a Scheme list (rather than list of tokens)
-(define-syntax revlstlstcps
-  (syntax-rules ()
-    ((revlstlstcps (?car . ?cdr) ?out ?next . ?more)
-     (revlstlstcps ?cdr (?car . ?out) ?next . ?more))
-    ((revlstlstcps () (?out ...) ?next . ?more)
-     (?next (list ?out ...) . ?more))))
+;(define-syntax revlstlstcps
+;  (syntax-rules ()
+;    ((revlstlstcps (?car . ?cdr) ?out ?next . ?more)
+;     (revlstlstcps ?cdr (?car . ?out) ?next . ?more))
+;    ((revlstlstcps () (?out ...) ?next . ?more)
+;     (?next (list ?out ...) . ?more))))
 
 ;; eof

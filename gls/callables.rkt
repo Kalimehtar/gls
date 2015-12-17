@@ -42,9 +42,11 @@
 	    (error 'primary-composer "Ambiguous: ~a on values ~a" mams vals))
 	;; here we know mams is a list of length 1
 	(call-context
-	 generic mams			; generic, chain
+	 generic
+         mams			; generic, chain
 	 (remove (car mams) app-ms) ; next
-	 #f vals			; callable, argvals
+	 #f
+         vals			; callable, argvals
 	 (lambda () (apply (car mams) vals)))))) ; executor
 	
 ;; chain in increasing order
@@ -116,28 +118,15 @@
 			   (call-context-next the-context))
 		   (call-context-argvals the-context))))
 	     ;; keep the current context -- hack it             
-	     (set-call-context-chain!	; chain
-	      the-context (call-context-chain new-context))
-	     (set-call-context-next!	; next
-	      the-context (call-context-next new-context))
+	     (set-call-context-chain! the-context (call-context-chain new-context))
+	     (set-call-context-next! the-context (call-context-next new-context))
 	     ;; callable is set by the individual method (in call-method)
 	     ;; argvals stay the same
-	     (set-call-context-executor! ; executor
-	      the-context (call-context-executor new-context))
+	     (set-call-context-executor! the-context (call-context-executor new-context))
 	     ;; now go
 	     ((call-context-executor new-context)))))
      (else
       (error "call-next-method called while not in a chain")))))
-
-(define (unchecked-call callable args)
-  (dbg 'calls "unchecked-call ~a(args: ~a)" callable args)
-  (cond
-   ((method? callable)
-    (unchecked-call (method-callable callable) args))
-   ((procedure? callable)
-    (apply callable args))
-   (else
-    (error 'unchecked-call "Invalid callable in unchecked-call: ~a" callable))))
 
 ;; Returns most applicable methods (more than one if ambiguous).
 (define (standard-method-selector app-meths vals)

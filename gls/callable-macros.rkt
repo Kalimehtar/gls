@@ -15,8 +15,7 @@
   (syntax-rules ()
     ((defgeneric ?name ?method ...)
      (begin
-       (define ?name (make-generic ?method ...))
-       (set-generic-name! ?name '?name)))))
+       (define ?name (make-named-generic '?name ?method ...))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

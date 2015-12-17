@@ -34,12 +34,18 @@
 ;; However, the fact that (list? '()) => #t seems to take precedence.
 ;;  (and the fact that traditionally lists are sum types of nonempty and empty)
 (define <null> (and? <list> null?))
+(subtype! null? list?)
 
 ;; TO DO: more/better order to number hierarchy
 (define <complex> (and? <number> complex?))
 (define <real> (and? <complex> real?))
 (define <rational> (and? <real> rational?))
 (define <integer> (and? <rational> integer?))
+(subtype! complex? number?)
+(subtype! real? complex?)
+(subtype! rational? real?)
+(subtype! integer? rational?)
+(subtype! byte? integer?)
 
 (define <int> <integer>)
 
@@ -53,10 +59,10 @@
 ;; that have signature-type method-types.  The only methods for which we know 
 ;; this to be the case are record-subtype constructor methods and slot 
 ;; accessor methods.
-(define (method-signature m)
-  (if (signature-type? (method-args-type m))
-      (method-args-type m)
-      (error "Method ~a does not have a signature-type as its method-args-type"
-	     m)))
+;(define (method-signature m)
+;  (if (signature-type? (method-args-type m))
+;      (method-args-type m)
+;      (error "Method ~a does not have a signature-type as its method-args-type"
+;	     m)))
 
 ; eof

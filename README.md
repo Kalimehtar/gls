@@ -7,12 +7,12 @@ It provides multiple dispatch for Racket.
 
 Differences from Swindle:
 
-- Doesn't force you to change all. GLS is a small collection with a douzen of
+- Doesn't force you to change all. GLS is a small collection with a dozen of
   functions in API. It only adds generic functions.
 
 - It based upon types, not classes. You may dispatch you function on any
   predicate you may imagine: `exact-integer?`, `(real-in 0 10)`, 
-`(and? stream? (not/c stream-ampty?))`, ...
+`(and? stream? (not/c stream-empty?))`, ...
 
 GLS is based on Greg Sullivan's <a
 href="https://github.com/gregsgit/glos">GLOS</a>, that was witten for
