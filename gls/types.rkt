@@ -5,7 +5,6 @@
 (require (only-in srfi/1 any every list=)
          "utils.rkt"
          racket/function
-         racket/match
          (prefix-in c: racket/class))
 
 (provide (struct-out generic)
