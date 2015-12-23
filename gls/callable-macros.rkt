@@ -26,8 +26,8 @@
     ;; handle result spec., if any
     ((method ?argspec => ?resspec ?body ...) ; handle result spec
      (method-getargs ?argspec (?body ...) ?resspec #f () ()))
-    ((method ?argspec ?body ...)	; default result spec is <top>
-     (method-getargs ?argspec (?body ...) <top> #f () ()))))
+    ((method ?argspec ?body ...)	; default result spec is #t
+     (method-getargs ?argspec (?body ...) #t #f () ()))))
 
 ;; not for export
 ;; (method-getargs argspecs body result restspec args types)
@@ -42,16 +42,16 @@
     ;; rest var. with no specializer:
     ((method-getargs (:rest ?rest-var) ?body ?result ?rest ?args ?types)
      (revlstcps ?types ()
-		method-finish ?body ?result (?rest-var <top>) ?args))
+		method-finish ?body ?result (?rest-var #t) ?args))
     ;; arg. with a specializer:
     ((method-getargs ((?var1 ?type1) ?var2 ...) ?body ?result
 		     ?rest (?arg ...) (?type ...))
      (method-getargs (?var2 ...) ?body ?result ?rest (?var1 ?arg ...)
 		     (?type1 ?type ...)))
-    ;; arg with no specializer - defaults to <top>
+    ;; arg with no specializer - defaults to #t
     ((method-getargs (?var1 ?var2 ...) ?body ?result ?rest (?arg ...) (?type ...))
      (method-getargs (?var2 ...) ?body ?result ?rest (?var1 ?arg ...)
-		     (<top> ?type ...)))
+		     (#t ?type ...)))
     ;; done with arg.s, no rest
     ((method-getargs () ?body ?result ?rest ?args ?types)
      (revlstcps ?types ()

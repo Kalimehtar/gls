@@ -325,7 +325,7 @@
 	 #f vals			; callable, argvals
 	 (lambda () (apply (car mams) vals)))))) ; executor
 
-(define <default-around-type> (or? #t (const #t))) ; will be super of just <top>
+(define <default-around-type> (or? #t (const #t))) ; will be super of just #t
 
 ;; take a "two-level" generic and turn it into a three-level generic.
 (define (make-generic-arounded! gf)
