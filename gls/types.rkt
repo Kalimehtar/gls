@@ -361,7 +361,7 @@
 ;(define <type>
 ;  (or? <eq-type> <and-type> <or-type>
 ;       <signature-type> <method-type>
-;       (lambda (v) (eq? v <top>))))
+;       (lambda (v) (eq? v #t))))
 
 ;		predicate-subtype?))
 		     

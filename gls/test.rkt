@@ -6,9 +6,9 @@
 
 (define (fact x)
   (defgeneric fact0
-    (method ((n (and? <integer> (== 1))) (acc <integer>))
+    (method ((n (and? integer? (== 1))) (acc integer?))
             acc)
-    (method ((n <integer>) (acc <integer>))
+    (method ((n integer?) (acc integer?))
             (fact0 (- n 1) (* acc n))))
   (fact0 x 1))
 
@@ -92,7 +92,7 @@
 
 (add-after-method
  g1 (method (x)
-	    (cl-format #t "in after method on <top>~%")))
+	    (cl-format #t "in after method on #t~%")))
 
 (g1 "hi")
 
@@ -149,15 +149,15 @@
   
 (define *in-foo?* (make-fluid #f))
 (add-around-method
- foo (make-method "around foo" <top> #f
+ foo (make-method "around foo" #t #f
 		  (lambda args
 		    (let-fluid *in-foo?* #t
 			       (lambda ()
 				 (call-next-method)))) #f))
 
-(gfmethod (bar (x (and? <top> (fluid *in-foo?*))))
+(gfmethod (bar (x (and? #t (fluid *in-foo?*))))
 	  (cl-format #t "in bar, in cflow of foo~%"))
-(gfmethod (bar (x <top>))
+(gfmethod (bar (x #t))
 	  (cl-format #t "in bar, not in cflow of foo~%"))
 
 (bar 3)
@@ -286,7 +286,7 @@
 
 (get-y c1)
 
-(remove-after-method new (make-signature-type <top> (== <c1>)))
+(remove-after-method new (make-signature-type #t (== <c1>)))
 
 ;; Abstract Factory pattern
 (defrectype <maze> () ())
@@ -1082,26 +1082,26 @@
 
 (test2
  (isa? (method ((x <int>)) => <int> (+ x 2))
-       (make-method-type #f <int> <top>))
+       (make-method-type #f <int> #t))
  #f)
 
 (define n1
   (make-method "n1"
 	       (pred (lambda (l)
 		       (< (car l) (cadr l))))
-	       <top>
+	       #t
 	       (lambda (x y) (+ x y))))
 (define n2
   (make-method "n2"
 	       (pred (lambda (l)
 		       (= (car l) (cadr l))))
-	       <top>
+	       #t
 	       (lambda (x y) (- x y))))
 (define n3
   (make-method "n3"
 	       (pred (lambda (l)
 		       (> (car l) (cadr l))))
-	       <top>
+	       #t
 	       (lambda (x y) (* x y))))
 (defgeneric g2 n1 n2 n3)
 (call g2 2 3)
