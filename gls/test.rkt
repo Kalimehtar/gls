@@ -1,8 +1,5 @@
 #lang racket
-(require "main.rkt")
-
-(define (cl-format a str . args)
-  (display (apply format str args)))
+(require "main.rkt" rackunit)
 
 (define (fact x)
   (defgeneric fact0
@@ -11,6 +8,45 @@
     (method ((n integer?) (acc integer?))
             (fact0 (- n 1) (* acc n))))
   (fact0 x 1))
+
+(check-equal? (fact 5) 120)
+
+(defmethod (m1 (i integer?))
+  (format "m1<integer>(~a)" i))
+
+(defmethod (m2 (i integer?) (s string?))
+  (format "m2, i=~a, s=~a" i s))
+
+(check-equal? (m1 2) "m1<integer>(2)")
+
+(defgeneric g1
+  m1
+  (method ((n number?))
+	  (format "g1<number>(~a)" n))
+  (method ((s string?))
+	  (format "g1string?(~a)" s)))
+
+(check-equal? (g1 "hi") "g1string?(hi)")
+(check-equal? (g1 2) "m1<integer>(2)")
+(check-equal? (g1 2.1) "g1<number>(2.1)")
+
+(add-method g1
+            (method ((x (and? integer? even?)))
+                    (displayln (format "g1 on even int, (~a)" x))
+                    (call-next-method)))
+
+(replace-method g1
+                (make-signature-type #f integer?)
+                (method ((i integer?))
+                        (displayln (format "new g1<int>(~a)" i))
+                        (call-next-method)))
+
+(check-equal? (g1 "hi") "g1string?(hi)")
+(let ([res #f])
+  (define output (with-output-to-string
+                  (lambda () (set! res (g1 3)))))
+  (check-equal? res "g1<number>(3)")
+  (check-equal? output "new g1<int>(3)\n"))
 
 ;;;; IMPORTANT: following examples are copied from original version of GLOS
 ;;;;            in GLS there are no defrectype, you may use racket/class classes instead

@@ -327,8 +327,10 @@
     ;;   2. else some t1_i <= t2.
     [(and-type? t1)
      (if (and-type? t2)
-         (every (curry subtype? t1) (and-type-types t2))
-         (any (curryr subtype? t2) (and-type-types t1)))]
+         (for/and ([type (in-list (and-type-types t2))])
+           (subtype? t1 type))
+         (for/or ([type (in-list (and-type-types t1))])
+           (subtype? type t2)))]
     [(or-type? t1);; (or t1_1 ... t1_n) <= t2  iff all t1_i <= t2
      (for/and ([type (in-list (or-type-types t1))])
        (subtype? type t2))]
@@ -336,7 +338,7 @@
      (or (isa? (eq-type-val t1) t2)
          (and (eq-type? t2) (equal? (eq-type-val t1) (eq-type-val t2))))]
     [(and-type? t2);; t1 <= (and t2_1 ... t2_n) iff t1 <= t2_i for all i
-     (for/and ([type (in-list (or-type-types t1))])
+     (for/and ([type (in-list (and-type-types t2))])
        (subtype? t1 type))]
     [(or-type? t2);; t1 <= (or t2_1 ... t2_n) iff t1 <= t2_i for some i
      (for/or ([type (in-list (or-type-types t2))])
