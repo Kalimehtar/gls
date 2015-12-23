@@ -1,8 +1,26 @@
 #lang racket/base
-(require "types.rkt" "runtime-library.rkt" "callable-macros.rkt" "callables.rkt")
+(require "types.rkt" "callable-macros.rkt" "callables.rkt")
 
-(provide add-method replace-method call-next-method
-         add-around-method add-before-method add-after-method
-         defgeneric defmethod method gfmethod
-         make-signature-type and? or?
-         <top> == <null> <complex> <real> <rational> <integer> <int> <callable>)
+(provide add-method
+         replace-method
+         call-next-method
+         add-around-method
+         add-before-method
+         add-after-method
+         defgeneric
+         defmethod
+         method
+         gfmethod
+         make-signature-type
+         and?
+         or?
+         compose?
+         ==
+         *return-value*)
+
+(subtype! complex? number?)
+(subtype! real? complex?)
+(subtype! rational? real?)
+(subtype! integer? rational?)
+(subtype! byte? integer?)
+(subtype! null? list?)

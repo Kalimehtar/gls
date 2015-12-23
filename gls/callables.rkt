@@ -1,8 +1,18 @@
 #lang racket/base
 
-(require (only-in srfi/1 any find) "utils.rkt" "types.rkt" racket/function)
-(provide make-generic make-named-generic add-method replace-method call-next-method
-         add-around-method add-before-method add-after-method)
+(require "utils.rkt"
+         "types.rkt"
+         racket/function
+         srfi/26)
+(provide make-generic
+         make-named-generic
+         add-method
+         replace-method
+         call-next-method
+         add-around-method
+         add-before-method
+         add-after-method
+         *return-value*)
 ;; callables.scm
 ;; Definitions of methods, generics, signatures, and the functions that call them.
 
@@ -15,12 +25,12 @@
   (apply make-named-generic "anon" methods))
 
 (define (make-named-generic name . methods)
-  (let ((gf (really-make-generic name methods
-				 primary-composer standard-add-method-check)))
-    (for-each (lambda (m)
-		(set-method-generic/f! m gf))
-	      methods)
-    gf))
+  (define gf (really-make-generic name
+                                  methods
+                                  primary-composer
+                                  standard-add-method-check))
+  (for-each (cut set-method-generic/f! <> gf) methods)
+  gf)
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -38,8 +48,8 @@
   (if (null? app-ms)
       (error 'primary-composer "No applicable method, generic=~a, vals=~a" generic vals)
       (let ((mams (standard-method-selector app-ms vals)))
-	(when (> (length mams) 1)
-	    (error 'primary-composer "Ambiguous: ~a on values ~a" mams vals))
+	(when (cdr mams)
+          (error 'primary-composer "Ambiguous: ~a on values ~a" mams vals))
 	;; here we know mams is a list of length 1
 	(call-context
 	 generic
@@ -47,28 +57,21 @@
 	 (remove (car mams) app-ms) ; next
 	 #f
          vals			; callable, argvals
-	 (lambda () (apply (car mams) vals)))))) ; executor
-	
+	 (λ () (apply (car mams) vals)))))) ; executor
+
+(define (sorted-methods app-ms)
+  (sort app-ms
+        (λ (m1 m2)
+          (subtype? (method-args-type m1)
+                    (method-args-type m2)))))
+
 ;; chain in increasing order
 (define (before-composer generic app-ms vals)
-  (let ((sorted-ms
-	 (reverse			; want general to specific
-	  (sort
-	   app-ms
-	   (lambda (m1 m2)
-	     (subtype? (method-args-type m1)
-		       (method-args-type m2)))))))
-    (chain-composer generic sorted-ms vals)))
+  (chain-composer generic (reverse (sorted-methods app-ms)) vals))
 
 ;; chain in decreasing order
 (define (after-composer generic app-ms vals)
-  (let ((sorted-ms
-	 (sort
-	  app-ms
-	  (lambda (m1 m2)
-	    (subtype? (method-args-type m1)
-		      (method-args-type m2))))))
-    (chain-composer generic sorted-ms vals)))
+  (chain-composer generic (sorted-methods app-ms) vals))
 
 ;; Composer for a generic with before, after, around, and primary 
 ;; generic functions.
@@ -134,7 +137,7 @@
   ;; -- uses only the methods' signatures -- not the actual arg.s.
   (foldl
    ;; mams holds candidates for mam (all elts mutually ambiguous)   
-   (lambda (m mams)
+   (λ (m mams)
      (let ((m-type (method-args-type m)))
        ;; Cannot have situation where both m is <= some method m' in mams
        ;; AND m is >= some other function m'' in mams -- that would imply that
@@ -143,21 +146,20 @@
        ;; be duplicate methods problem.
        (cond
 	;; if m >= any m' in mams, m is not a mam candidate
-	((any (curryr subtype? m-type)
-	      (map method-args-type mams))
-	 mams)
+         [(for/or ([type (in-list (map method-args-type mams))])
+          (subtype? type m-type))
+          mams]
 	;; if m < any m' in mams, replace all such m' with m
-	((any (curry subtype? m-type)
-	      (map method-args-type mams))
-	 (cons m
-	       (filter
-		(lambda (m1) 
-		  (not (subtype?
-			m-type (method-args-type m1))))
-		mams)))
+         [(for/or ([type (in-list (map method-args-type mams))])
+            (subtype? m-type type))
+          (cons m
+                (filter (λ (m1) 
+                          (not (subtype?
+                                m-type (method-args-type m1))))
+                        mams))]
 	;; otherwise, must be incomparable with all elts of mam, so add m
-	(else
-	 (cons m mams)))))
+	[else
+         (cons m mams)])))
    (list (car app-meths))
    (cdr app-meths)))
 
@@ -166,12 +168,12 @@
 
 ;; errs if duplicate
 (define (standard-add-method-check m gf)
-  (if (find (lambda (m1) 
-	      (type-equal? (method-args-type m1)
-			   (method-args-type m)))
-	    (generic-methods gf))
+  (if (findf (lambda (m1) 
+               (type-equal? (method-args-type m1)
+                            (method-args-type m)))
+             (generic-methods gf))
       (error "Adding duplicate method - use replace-method. ~a, ~a"
-	     gf m)
+             gf m)
       (void)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -203,7 +205,7 @@
 	       (primary-method
 		(make-method (format "primary method for ~a"
 				     (generic-name gf))
-			     <primary> <top> ; args-type, result-type
+			     <primary> #t ; args-type, result-type
 			     primary-generic gf)) ; callable, generic/f
 	       (before-generic
 		;; no methods yet
@@ -214,7 +216,7 @@
 	       (before-method
 		(make-method (format "before method for ~a"
 				     (generic-name gf))
-			     <before> <top> ; args-type, result-type
+			     <before> #t ; args-type, result-type
 			     before-generic gf)) ; callable, generic/f
 	       (after-generic
 		;; no methods yet
@@ -225,7 +227,7 @@
 	       (after-method
 		(make-method (format "after method for ~a"
 				     (generic-name gf))
-			     <after> <top> ; args-type, result-type
+			     <after> #t ; args-type, result-type
 			     after-generic gf))) ; callable, generic/f
 	  (set-generic-methods! gf (list before-method primary-method after-method))
 	  (set-generic-composer! gf method-combination-composer))))
@@ -233,8 +235,8 @@
 (define (find-hidden-generic gf ref-fn label)
   (cond
    ((eq? (generic-composer gf) around-composer)
-    (cond ((find (lambda (m) (eq? (method-args-type m) <default-around-type>))
-		 (generic-methods gf))
+    (cond ((findf (λ (m) (eq? (method-args-type m) <default-around-type>))
+                  (generic-methods gf))
 	   => (lambda (m) (find-hidden-generic (method-callable m) ref-fn label)))
 	  (else
 	   (error 'find-hidden-generic "could not find default around method, finding ~a generic"
@@ -268,12 +270,12 @@
 (define (remove-primary-method gf sig)
   (let ((primary-gf (primary-generic gf)))
     (cond
-     ((find (lambda (m1) 
-	      (type-equal? sig (method-args-type m1)))
-	      (generic-methods primary-gf))
-      => (lambda (m)
-	   (set-generic-methods!
-	    primary-gf
+     ((findf (λ (m1) 
+               (type-equal? sig (method-args-type m1)))
+             (generic-methods primary-gf))
+      => (λ (m)
+           (set-generic-methods!
+            primary-gf
             (remove m (generic-methods primary-gf)))))
      (else
       (error 'remove-primary-method "Could not find method matching ~a for generic ~a" sig gf)))))
@@ -323,7 +325,7 @@
 	 #f vals			; callable, argvals
 	 (lambda () (apply (car mams) vals)))))) ; executor
 
-(define <default-around-type> (or? <top> (const #t))) ; will be super of just <top>
+(define <default-around-type> (or? #t (const #t))) ; will be super of just <top>
 
 ;; take a "two-level" generic and turn it into a three-level generic.
 (define (make-generic-arounded! gf)
@@ -340,7 +342,7 @@
            (default-around-method
              (make-method
               (format "default around method for ~a" (generic-name gf))
-              <default-around-type> <top> ; args-type, result-type
+              <default-around-type> #t ; args-type, result-type
               default-generic gf)))	; callable, generic/f
       (set-generic-methods! gf (list default-around-method))
       (set-generic-composer! gf around-composer))))

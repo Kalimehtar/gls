@@ -19,7 +19,7 @@
          type-equal?
          and?
          or?
-         <top>
+         compose?
          ==)
 
 (module+ test
@@ -32,12 +32,6 @@
 ;;   should be recorded.  Later, when cons, set-car, set-cdr! is done, 
 ;;   the type of the resulting list can be calculated by doing a lub with types
 ;;   of new value(s).
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;  TOP TYPE
-;;
-(define <top> #t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -69,8 +63,6 @@
   [(define (write-proc v port mode)
      ((recur-write-proc mode) `(and-type ,@(and-type-types v)) port))])
   
-;(define <and-type> and-type?)
-
 ;; simple normalization of and-types:
 ;;   (1) (and x (and y z)) => (and x y z)
 ;;   (2) (and x y z), (subtype? x y) => (and x z)
@@ -115,15 +107,6 @@
   #:methods gen:custom-write
   [(define (write-proc v port mode)
      ((recur-write-proc mode) `(or-type ,@(or-type-types v)) port))])
-;(define-record-type or-type :or-type
-;  (really-make-or-type disjuncts)
-;  or-type?
-;  (disjuncts or-type-types))
-
-;(define-record-discloser :or-type
-;  (lambda (v) `(or-type ,@(or-type-types v))))
-
-;(define <or-type> or-type?)
 
 ;; simple normalization of or-types:
 ;; (1) (or x (or y z)) => (or x y z)
@@ -153,6 +136,27 @@
   (check-equal? (or? byte? byte?) byte?)
   (check-equal? (or? (and? byte? integer?) byte?) byte?))
 ;(define or? make-or-type)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  COMPOSE TYPES
+;;
+
+(struct compose-type (types) 
+  #:constructor-name compose?
+  #:property prop:procedure
+  (lambda (type x)
+    ((apply compose (compose-type-types type)) x))
+  #:methods gen:custom-write
+  [(define (write-proc v port mode)
+     ((recur-write-proc mode) `(compose-type ,@(compose-type-types v)) port))])
+
+(define (compose-subtype? type1 type2)
+  (define types1 (compose-type-types type1))
+  (define types2 (compose-type-types type2))
+  (and (equal? (cdr types1) (cdr types1))
+       (subtype? (car types1) (car types1))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -326,14 +330,20 @@
          (every (curry subtype? t1) (and-type-types t2))
          (any (curryr subtype? t2) (and-type-types t1)))]
     [(or-type? t1);; (or t1_1 ... t1_n) <= t2  iff all t1_i <= t2
-     (every (curryr subtype? t2) (or-type-types t1))]
+     (for/and ([type (in-list (or-type-types t1))])
+       (subtype? type t2))]
     [(eq-type? t1);; (eq v) <= t2  iff  v : t2 or t2 : eq(v)
      (or (isa? (eq-type-val t1) t2)
          (and (eq-type? t2) (equal? (eq-type-val t1) (eq-type-val t2))))]
     [(and-type? t2);; t1 <= (and t2_1 ... t2_n) iff t1 <= t2_i for all i
-     (every (curry subtype? t1) (and-type-types t2))]
+     (for/and ([type (in-list (or-type-types t1))])
+       (subtype? t1 type))]
     [(or-type? t2);; t1 <= (or t2_1 ... t2_n) iff t1 <= t2_i for some i
-     (any (curry subtype? t1) (or-type-types t2))]
+     (for/or ([type (in-list (or-type-types t2))])
+       (subtype? t1 type))]
+    [(compose-type? t1)
+     (and (compose-type? t2)
+          (compose-subtype? t1 t2))]    
     [(c:class? t2) (c:subclass? t1 t2)]
     [(signature-type? t1)
      (and (signature-type? t2)
@@ -359,7 +369,7 @@
 ;; returns val on success
 (define (check-type! val type)
   (cond
-    [(eq? type <top>) val]
+    [(eq? type #t) val]
     [(isa? val type) val]
     [else (error 'check-type "check-type! failed: ~a ~a" val type)]))
 
@@ -379,7 +389,6 @@
               (for/or ([type1 types2])
                       (type-equal? type1 type2)))))
   (or (eq? t1 t2)
-      (and (eq? <top> t1) (eq? <top> t2))
       (and (and-type? t1) 
            (and-type? t2)
            (type-list-equal? (and-type-types t1) (and-type-types t2)))

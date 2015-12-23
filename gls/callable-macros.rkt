@@ -103,12 +103,12 @@
     ((gfmethod (?name . ?argspec) . ?body)
      (let ((temp-method (method ?argspec . ?body)))
        (set-method-name! temp-method
-			 (string->symbol (format #f "method-of-~a" '?name)))
+			 (string->symbol (format "method-of-~a" '?name)))
        (add-method ?name temp-method)))
     ((gfmethod (?name . ?argspec) => ?result-spec . ?body)
      (let ((temp-method (method ?argspec => ?result-spec . ?body)))
        (set-method-name! temp-method
-			 (string->symbol (format #f "method-of-~a" '?name)))
+			 (string->symbol (format "method-of-~a" '?name)))
        (add-method ?name temp-method)))))
 
 ;; eof
