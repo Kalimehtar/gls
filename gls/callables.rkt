@@ -2,8 +2,7 @@
 
 (require "utils.rkt"
          "types.rkt"
-         racket/function
-         srfi/26)
+         racket/function)
 (provide make-generic
          make-named-generic
          add-method
@@ -29,7 +28,8 @@
                                   methods
                                   primary-composer
                                   standard-add-method-check))
-  (for-each (cut set-method-generic/f! <> gf) methods)
+  (for ([m (in-list methods)])
+       (set-method-generic/f! m gf))
   gf)
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -48,7 +48,7 @@
   (if (null? app-ms)
       (error 'primary-composer "No applicable method, generic=~a, vals=~a" generic vals)
       (let ((mams (standard-method-selector app-ms vals)))
-	(when (cdr mams)
+	(unless (null? (cdr mams))
           (error 'primary-composer "Ambiguous: ~a on values ~a" mams vals))
 	;; here we know mams is a list of length 1
 	(call-context
@@ -93,43 +93,43 @@
    generic app-ms			; generic, chain
    '() #f vals				; next, callable, args
    (lambda ()				; executor
-     (foldl (lambda (m-todo return-val)
-	     (if (eq? <after> (method-args-type m-todo))
-		 (parameterize ([*return-value* return-val])
-                   (apply m-todo vals)
-                   return-val)
-		 (apply m-todo vals)))
-	   #f
-	   app-ms))))
+     (foldl (λ (m-todo return-val)
+              (if (eq? <after> (method-args-type m-todo))
+                  (parameterize ([*return-value* return-val])
+                    (apply m-todo vals)
+                    return-val)
+                  (apply m-todo vals)))
+            #f
+            app-ms))))
 
 ;; TO DO: call-next-method is too expensive.
 ;; keeps the current call context, but mutates chain and next
 (define (call-next-method)
-  (let ((the-context (*call-context*)))
-    (cond
-     ;; if we're in the midst of a chain, call next method in chain
-     ;; ** for now, that means recompose to a new effective fn. **
-     ((memq (call-context-callable the-context)
-	    (call-context-chain the-context))
-      => (lambda (chain-rest)
-	   ;; recompose effective function
-	   (let ((new-context
-		  ((generic-composer (call-context-generic the-context))
-		   (call-context-generic the-context)
-		   ;; using rest of chain and all next methods
-		   (append (cdr chain-rest)
-			   (call-context-next the-context))
-		   (call-context-argvals the-context))))
-	     ;; keep the current context -- hack it             
-	     (set-call-context-chain! the-context (call-context-chain new-context))
-	     (set-call-context-next! the-context (call-context-next new-context))
-	     ;; callable is set by the individual method (in call-method)
-	     ;; argvals stay the same
-	     (set-call-context-executor! the-context (call-context-executor new-context))
-	     ;; now go
-	     ((call-context-executor new-context)))))
-     (else
-      (error "call-next-method called while not in a chain")))))
+  (define the-context (*call-context*))
+  (cond
+    ;; if we're in the midst of a chain, call next method in chain
+    ;; ** for now, that means recompose to a new effective fn. **
+    [(memq (call-context-callable the-context)
+           (call-context-chain the-context))
+     => (λ (chain-rest)
+          ;; recompose effective function
+          (define new-context
+            ((generic-composer (call-context-generic the-context))
+             (call-context-generic the-context)
+             ;; using rest of chain and all next methods
+             (append (cdr chain-rest)
+                     (call-context-next the-context))
+             (call-context-argvals the-context)))
+          ;; keep the current context -- hack it             
+          (set-call-context-chain! the-context (call-context-chain new-context))
+          (set-call-context-next! the-context (call-context-next new-context))
+          ;; callable is set by the individual method (in call-method)
+          ;; argvals stay the same
+          (set-call-context-executor! the-context (call-context-executor new-context))
+          ;; now go
+          ((call-context-executor new-context)))]
+    [else
+     (error "call-next-method called while not in a chain")]))
 
 ;; Returns most applicable methods (more than one if ambiguous).
 (define (standard-method-selector app-meths vals)
@@ -138,28 +138,28 @@
   (foldl
    ;; mams holds candidates for mam (all elts mutually ambiguous)   
    (λ (m mams)
-     (let ((m-type (method-args-type m)))
-       ;; Cannot have situation where both m is <= some method m' in mams
-       ;; AND m is >= some other function m'' in mams -- that would imply that
-       ;; m' and m'' are comparable and therefore not mutually ambiguous. 
-       ;; Also, better not have case that arg-types(m) = arg-types(m') as that would
-       ;; be duplicate methods problem.
-       (cond
-	;; if m >= any m' in mams, m is not a mam candidate
-         [(for/or ([type (in-list (map method-args-type mams))])
+     (define m-type (method-args-type m))
+     ;; Cannot have situation where both m is <= some method m' in mams
+     ;; AND m is >= some other function m'' in mams -- that would imply that
+     ;; m' and m'' are comparable and therefore not mutually ambiguous. 
+     ;; Also, better not have case that arg-types(m) = arg-types(m') as that would
+     ;; be duplicate methods problem.
+     (cond
+       ;; if m >= any m' in mams, m is not a mam candidate
+       [(for/or ([type (in-list (map method-args-type mams))])
           (subtype? type m-type))
-          mams]
-	;; if m < any m' in mams, replace all such m' with m
-         [(for/or ([type (in-list (map method-args-type mams))])
-            (subtype? m-type type))
-          (cons m
-                (filter (λ (m1) 
-                          (not (subtype?
-                                m-type (method-args-type m1))))
-                        mams))]
-	;; otherwise, must be incomparable with all elts of mam, so add m
-	[else
-         (cons m mams)])))
+        mams]
+       ;; if m < any m' in mams, replace all such m' with m
+       [(for/or ([type (in-list (map method-args-type mams))])
+          (subtype? m-type type))
+        (cons m
+              (filter (λ (m1) 
+                        (not (subtype?
+                              m-type (method-args-type m1))))
+                      mams))]
+       ;; otherwise, must be incomparable with all elts of mam, so add m
+       [else
+        (cons m mams)]))
    (list (car app-meths))
    (cdr app-meths)))
 
@@ -168,7 +168,7 @@
 
 ;; errs if duplicate
 (define (standard-add-method-check m gf)
-  (if (findf (lambda (m1) 
+  (if (findf (λ (m1) 
                (type-equal? (method-args-type m1)
                             (method-args-type m)))
              (generic-methods gf))
