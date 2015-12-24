@@ -19,6 +19,7 @@
          type-equal?
          and?
          or?
+         negate?
          compose?
          ==)
 
@@ -43,7 +44,7 @@
     (eq? x (eq-type-val type)))
   #:methods gen:custom-write
   [(define (write-proc v port mode)
-     ((recur-write-proc mode) `(eq-type ,(eq-type-val v)) port))])
+     ((recur-write-proc mode) `(== ,(eq-type-val v)) port))])
 
 (define == eq-type)
 
@@ -61,7 +62,7 @@
       (isa? x t)))
   #:methods gen:custom-write
   [(define (write-proc v port mode)
-     ((recur-write-proc mode) `(and-type ,@(and-type-types v)) port))])
+     ((recur-write-proc mode) `(and? ,@(and-type-types v)) port))])
   
 ;; simple normalization of and-types:
 ;;   (1) (and x (and y z)) => (and x y z)
@@ -106,7 +107,7 @@
       (isa? x t)))
   #:methods gen:custom-write
   [(define (write-proc v port mode)
-     ((recur-write-proc mode) `(or-type ,@(or-type-types v)) port))])
+     ((recur-write-proc mode) `(or? ,@(or-type-types v)) port))])
 
 ;; simple normalization of or-types:
 ;; (1) (or x (or y z)) => (or x y z)
@@ -143,12 +144,12 @@
 ;;
 
 (struct compose-type (types) 
-  #:property prop:procedure
+  #:property prop:procedure  
   (lambda (type x)
     ((apply compose (compose-type-types type)) x))
   #:methods gen:custom-write
   [(define (write-proc v port mode)
-     ((recur-write-proc mode) `(compose-type ,@(compose-type-types v)) port))])
+     ((recur-write-proc mode) `(compose? ,@(compose-type-types v)) port))])
 
 (define (compose? . types) (compose-type types))
 
@@ -158,6 +159,19 @@
   (and (equal? (cdr types1) (cdr types1))
        (subtype? (car types1) (car types1))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  NEGATE TYPES
+;;
+
+(struct negate-type (type)
+  #:constructor-name negate?
+  #:property prop:procedure
+  (lambda (type x)
+    (not (isa? x (negate-type-type type))))
+  #:methods gen:custom-write
+  [(define (write-proc v port mode)
+     ((recur-write-proc mode) `(negate? ,@(compose-type-types v)) port))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -319,48 +333,53 @@
 ;; that is, true if for every value v, (isa? v t1) => (isa? v t2)
 ;; - note that predicate types are not comparable.
 (define (subtype? t1 t2)
-  (cond
-    [(eq? t1 t2) #t]
-    [(boolean? t2) t2] ;; any is subtype of #t, none is subtype of #f
-    [(eq? t1 #f) #t]
-    ;; (and t1_1 ... t1_n) <= t2  iff 
-    ;;   1. if t2 = (and t2_1 ... t2_m), t1 <= t2_i for all t2_i.
-    ;;   2. else some t1_i <= t2.
-    [(and-type? t1)
-     (if (and-type? t2)
+  (or (cond
+        [(eq? t1 t2) #t]
+        [(eq? t2 #t) #t]
+        [(eq? t1 #f) #t]
+        ;; (and t1_1 ... t1_n) <= t2  iff 
+        ;;   1. if t2 = (and t2_1 ... t2_m), t1 <= t2_i for all t2_i.
+        ;;   2. else some t1_i <= t2.
+        [(and-type? t1)
+         (if (and-type? t2)
+             (for/and ([type (in-list (and-type-types t2))])
+               (subtype? t1 type))
+             (for/or ([type (in-list (and-type-types t1))])
+               (subtype? type t2)))]
+        [(or-type? t1);; (or t1_1 ... t1_n) <= t2  iff all t1_i <= t2
+         (for/and ([type (in-list (or-type-types t1))])
+           (subtype? type t2))]
+        [(eq-type? t1);; (eq v) <= t2  iff  v : t2 or t2 : eq(v)
+         (or (isa? (eq-type-val t1) t2)
+             (and (eq-type? t2) (equal? (eq-type-val t1) (eq-type-val t2))))]
+        [(and-type? t2);; t1 <= (and t2_1 ... t2_n) iff t1 <= t2_i for all i
          (for/and ([type (in-list (and-type-types t2))])
-           (subtype? t1 type))
-         (for/or ([type (in-list (and-type-types t1))])
-           (subtype? type t2)))]
-    [(or-type? t1);; (or t1_1 ... t1_n) <= t2  iff all t1_i <= t2
-     (for/and ([type (in-list (or-type-types t1))])
-       (subtype? type t2))]
-    [(eq-type? t1);; (eq v) <= t2  iff  v : t2 or t2 : eq(v)
-     (or (isa? (eq-type-val t1) t2)
-         (and (eq-type? t2) (equal? (eq-type-val t1) (eq-type-val t2))))]
-    [(and-type? t2);; t1 <= (and t2_1 ... t2_n) iff t1 <= t2_i for all i
-     (for/and ([type (in-list (and-type-types t2))])
-       (subtype? t1 type))]
-    [(or-type? t2);; t1 <= (or t2_1 ... t2_n) iff t1 <= t2_i for some i
-     (for/or ([type (in-list (or-type-types t2))])
-       (subtype? t1 type))]
-    [(compose-type? t1)
-     (and (compose-type? t2)
-          (compose-subtype? t1 t2))]    
-    [(c:class? t2) (c:subclass? t1 t2)]
-    [(signature-type? t1)
-     (and (signature-type? t2)
+           (subtype? t1 type))]
+        [(or-type? t2);; t1 <= (or t2_1 ... t2_n) iff t1 <= t2_i for some i
+         (for/or ([type (in-list (or-type-types t2))])
+           (subtype? t1 type))]
+        [(compose-type? t1)
+         (and (compose-type? t2)
+              (compose-subtype? t1 t2))]
+        [(c:class? t2) (c:subclass? t1 t2)]
+        [(signature-type? t1)
+         (and 
+          (signature-type? t2)
           (signature-subtype? t1 t2))]	; covariant
-    [(method-type? t1)
-     (and (method-type? t2)
-          ;; contravariant in the arg types
-          (subtype? (method-type-args-type t2) (method-type-args-type t1))
-          ;; covariant in result types
-          (subtype? (method-type-result-type t1)
-                    (method-type-result-type t2)))]
-    [(parents-subtype? t1 t2)]
-    [else #f]))
-
+        [(method-type? t1)              
+         (and (method-type? t2)
+              ;; contravariant in the arg types
+              (subtype? (method-type-args-type t2) (method-type-args-type t1))
+              ;; covariant in result types
+              (subtype? (method-type-result-type t1)
+                        (method-type-result-type t2)))]
+        [(and (negate-type? t1)
+              (negate-type? t2))
+         (subtype? (negate-type-type t2) (negate-type-type t1))]
+        [(parents-subtype? t1 t2)]
+        [else #f])
+      (parents-subtype? t1 t2)))
+  
 ;(define <type>
 ;  (or? <eq-type> <and-type> <or-type>
 ;       <signature-type> <method-type>

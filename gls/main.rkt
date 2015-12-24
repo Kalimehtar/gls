@@ -15,6 +15,7 @@
          and?
          or?
          compose?
+         negate?
          ==
          *return-value*)
 
