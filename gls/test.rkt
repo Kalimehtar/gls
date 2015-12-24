@@ -44,10 +44,61 @@
 (check-equal? (g1 "hi") "g1string?(hi)")
 (let ([res #f])
   (define output (with-output-to-string
-                  (lambda () (set! res (g1 3)))))
+                  (λ () (set! res (g1 3)))))
   (check-equal? res "g1<number>(3)")
   (check-equal? output "new g1<int>(3)\n"))
 
+(defmethod (bm1 x)
+  (displayln (format "in bm1, got ~a" x)))
+
+(defmethod (bm2 (x integer?))
+  (displayln (format "in bm2 <int>, got ~a" x)))
+
+(add-before-method g1 bm1)
+(add-before-method g1 bm2)
+
+(let ([res #f])
+  (define output (with-output-to-string
+                  (λ () (set! res (g1 "hi")))))
+  (check-equal? res "g1string?(hi)")
+  (check-equal? output "in bm1, got hi\n"))
+
+(let ([res #f])
+  (define output (with-output-to-string
+                  (λ () (set! res (g1 3)))))
+  (check-equal? res "g1<number>(3)")
+  (check-equal? output
+                (string-join (list "in bm1, got 3"
+                                   "in bm2 <int>, got 3"
+                                   "new g1<int>(3)"
+                                   "")
+                             "\n")))
+
+(add-after-method g1
+                  (method ((x string?))
+                          (displayln (format "in after method on string?, retval=~a"
+                                             (*return-value*)))))
+
+(check-equal? (with-output-to-string (λ () (g1 "hi")))
+              (string-join (list "in bm1, got hi"
+                                 "in after method on string?, retval=g1string?(hi)"
+                                 "")
+                           "\n"))
+
+(add-around-method g1
+                   (method ((x string?))
+                           (displayln (format "in around method on string?, calling next method"))
+                           (let ((val (call-next-method)))
+                             (displayln (format "back in around method on string?, got ~a" val))
+                             val)))
+
+(check-equal? (with-output-to-string (λ () (g1 "hi")))
+              (string-join (list "in around method on string?, calling next method"
+                                 "in bm1, got hi"
+                                 "in after method on string?, retval=g1string?(hi)"
+                                 "back in around method on string?, got g1string?(hi)"
+                                 "")
+                           "\n"))
 ;;;; IMPORTANT: following examples are copied from original version of GLOS
 ;;;;            in GLS there are no defrectype, you may use racket/class classes instead
 
