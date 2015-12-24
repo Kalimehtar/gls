@@ -102,7 +102,7 @@
   #:constructor-name really-make-or-type
   #:property prop:procedure
   (lambda (type x)
-    (for/or ([t (in-list (and-type-types type))])
+    (for/or ([t (in-list (or-type-types type))])
       (isa? x t)))
   #:methods gen:custom-write
   [(define (write-proc v port mode)
@@ -143,13 +143,14 @@
 ;;
 
 (struct compose-type (types) 
-  #:constructor-name compose?
   #:property prop:procedure
   (lambda (type x)
     ((apply compose (compose-type-types type)) x))
   #:methods gen:custom-write
   [(define (write-proc v port mode)
      ((recur-write-proc mode) `(compose-type ,@(compose-type-types v)) port))])
+
+(define (compose? . types) (compose-type types))
 
 (define (compose-subtype? type1 type2)
   (define types1 (compose-type-types type1))
