@@ -54,12 +54,12 @@ subtype of another type.
 @defproc[(subtype! [subtype gls:predicate?] [supertype gls:predicate?]) void?]{
 Sets @racket[_subtype] to be subtype of @racket[_supertype] for dispatching.
  So, if a generic has a method with @racket[_subtype] argument and
- a method with @racket[_supertype] argument and both a acceptable for some values,
+ a method with @racket[_supertype] argument and both are acceptable for some values,
  then the method with @racket[_subtype] argument will be executed.
 
 Beware, that @racket[subtype!] sets subtypes on values of predicates, not predicate bodies.
  So don't put (lambda ...) in it. @racket[lambda] on each call make new procedure
- even when calles with the same body.}
+ even when called with the same body.}
 
 @defform*[((method (arg ...) body ...+)
            (method (arg ...) => result body ...+))
@@ -72,12 +72,14 @@ Produces a method for GLS. Method may be used as a procedure, in that case no ty
 When used in generic, type of the arguments is used to select correct method. Result type is not used
 during dispatching, but is checked on the generic result.}
 
-@defform[(defgeneric name method ...)]
-{Defines generic with given name and methods.}
+@defform[(defgeneric name method ...)]{Defines generic with given name and methods.}
 
 @(interaction
   (require gls)
-  (define =1 (λ (x) (equal? x 1)))
+  (define (=1 x) (equal? x 1))
+  (code:comment "We cannot do (subtype! (λ (x) (equal? x)) integer?)," )
+  (code:comment "because (λ (x) (equal? x)) in")
+  (code:comment "`subtype!` and in `method` will be different")
   (subtype! =1 integer?)
   (define default (method ([n =1]) 1))  
   (defgeneric fact
