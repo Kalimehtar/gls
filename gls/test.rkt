@@ -3,7 +3,7 @@
 
 (define (fact x)
   (defgeneric fact0
-    (method ((n (== 1)) (acc integer?))
+    (method ((n (==? 1)) (acc integer?))
             acc)
     (method ((n integer?) (acc integer?))
             (fact0 (- n 1) (* acc n))))

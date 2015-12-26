@@ -21,7 +21,7 @@
          or?
          negate?
          compose?
-         ==)
+         ==?)
 
 (module+ test
   (require rackunit racket/function))
@@ -39,14 +39,13 @@
 ;;  EQ TYPES
 ;;
 (struct eq-type (val)
+  #:constructor-name ==?
   #:property prop:procedure
   (lambda (type x)
     (eq? x (eq-type-val type)))
   #:methods gen:custom-write
   [(define (write-proc v port mode)
      ((recur-write-proc mode) `(== ,(eq-type-val v)) port))])
-
-(define == eq-type)
 
 ;(define <eq-type> eq-type?)
 
@@ -395,7 +394,7 @@
     [(isa? val type) val]
     [else (error 'check-type "check-type! failed: ~a ~a" val type)]))
 
-(define <false> (== #f))
+(define <false> (==? #f))
 
 (define (false-or t)
   (or? <false> t))

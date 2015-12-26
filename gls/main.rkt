@@ -16,7 +16,7 @@
          or?
          compose?
          negate?
-         ==
+         ==?
          *return-value*)
 
 (subtype! complex? number?)
