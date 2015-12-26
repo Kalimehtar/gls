@@ -27,9 +27,16 @@ with @racket[gls] may be solved as
   (defgeneric circle-radius
     (method ([c circle?])
        (ellipse-h c)))
+  (defgeneric name
+    (method ([c circle?])
+            "Circle")
+    (method ([c ellipse?])
+            "Ellipse"))
   (define c (circle 10))
+  (name c)
   (circle-radius c)
   (set-ellipse-v! c 20)
+  (name c)
   (circle-radius c))
 
 So @racket[_c] is a circle only when both axis are equal.
@@ -56,14 +63,20 @@ Beware, that @racket[subtype!] sets subtypes on values of predicates, not predic
 
 @defform*[((method (arg ...) body ...+)
            (method (arg ...) => result body ...+))
-          #:contracts ([arg (or/c boolean? procedure?)]
-                       [result (or/c boolean? procedure?)])]{
-Produces a method for GLS. }
+          #:grammar ([arg
+                      arg-name
+                      (arg-name arg-type)])
+          #:contracts ([arg-type gls:type?]
+                       [result gls:type?])]{
+Produces a method for GLS. Method may be used as a procedure, in that case no typecheck is performed.
+When used in generic, type of the arguments is used to select correct method. Result type is not used
+during dispatching, but is checked on the generic result.}
 
 @defform[(defgeneric name method ...)]
 {Defines generic with given name and methods.}
 
 @(interaction
+  (require gls)
   (define =1 (λ (x) (equal? x 1)))
   (subtype! =1 integer?)
   (define default (method ([n =1]) 1))  

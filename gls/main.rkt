@@ -8,7 +8,8 @@
          add-before-method
          add-after-method
          defgeneric
-         method       
+         method
+         subtype!
          and?
          or?
          compose?
