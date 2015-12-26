@@ -1,7 +1,7 @@
 #lang racket/base
 ;; callable-macros.scm
 (require "types.rkt" "callables.rkt" "util-macros.rkt")
-(provide defgeneric defmethod method gfmethod)
+(provide defgeneric method)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; CALLABLE-RECORDS 
@@ -63,15 +63,13 @@
   (syntax-rules ()
     ;; no rest
     ((method-finish (?type ...) ?body ?result #f ?args)
-     (make-method "anon"
-		  (make-signature-type #f ?type ...)
+     (make-method (make-signature-type #f ?type ...)
 		  ?result
 		  (gen-method-lambda ?args () ?body)
 		  #f))
     ;; types rest
     ((method-finish (?type ...) ?body ?result (?rest-var ?rest-type) ?args)
-     (make-method "anon"
-		  (make-signature-type ?rest-type ?type ...)
+     (make-method (make-signature-type ?rest-type ?type ...)
 		  ?result
 		  (gen-method-lambda ?args ?rest-var ?body)
 		  #f))))
@@ -85,29 +83,5 @@
      (gen-method-lambda (arg2 ...) (arg1 . l) body))
     ((gen-method-lambda () l (body ...))
      (lambda l body ...))))
-
-(define-syntax defmethod
-  (syntax-rules (=>)
-    ((defmethod (?name . ?argspec) ?body ...)
-     (begin
-       (define ?name (method ?argspec ?body ...))
-       (set-method-name! ?name '?name)))
-    ((defmethod (?name . ?argspec) => ?result-spec ?body ...)
-     (begin
-       (define ?name (method ?argspec => ?result-spec ?body ...))
-       (set-method-name! ?name '?name)))))
-
-(define-syntax gfmethod
-  (syntax-rules (=>)
-    ((gfmethod (?name . ?argspec) . ?body)
-     (let ((temp-method (method ?argspec . ?body)))
-       (set-method-name! temp-method
-			 (string->symbol (format "method-of-~a" '?name)))
-       (add-method ?name temp-method)))
-    ((gfmethod (?name . ?argspec) => ?result-spec . ?body)
-     (let ((temp-method (method ?argspec => ?result-spec . ?body)))
-       (set-method-name! temp-method
-			 (string->symbol (format "method-of-~a" '?name)))
-       (add-method ?name temp-method)))))
 
 ;; eof

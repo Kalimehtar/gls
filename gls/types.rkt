@@ -1,9 +1,5 @@
-;; types.scm
-
 #lang racket/base
-;(require (for-syntax racket/base))
-(require (only-in srfi/1 any every list=)
-         "utils.rkt"
+(require "utils.rkt"
          racket/function
          (prefix-in c: racket/class))
 
@@ -288,9 +284,8 @@
 
 ;; common case
 (define (make-method-type rest-type/f result-type . arg-types)
-  (really-make-method-type
-   (really-make-signature-type arg-types rest-type/f)
-   result-type))
+  (really-make-method-type (really-make-signature-type arg-types rest-type/f)
+                           result-type))
 
 (define <method-type> method-type?)
 
@@ -379,25 +374,14 @@
         [else #f])
       (parents-subtype? t1 t2)))
   
-;(define <type>
-;  (or? <eq-type> <and-type> <or-type>
-;       <signature-type> <method-type>
-;       (lambda (v) (eq? v <top>))))
-
-;		predicate-subtype?))
-		     
 ;; TO DO: throw an exception on error
 ;; returns val on success
 (define (check-type! val type)
-  (cond
-    [(eq? type #t) val]
-    [(isa? val type) val]
-    [else (error 'check-type "check-type! failed: ~a ~a" val type)]))
-
-(define <false> (==? #f))
-
-(define (false-or t)
-  (or? <false> t))
+  (if (or 
+       (eq? type #t)
+       (isa? val type))
+      val
+      (error 'check-type "check-type! failed: ~a ~a" val type)))
 
 (define (type-equal? t1 t2)
   (define (type-list-equal? types1 types2)
@@ -422,7 +406,9 @@
       (and (signature-type? t1)
            (signature-type? t2)
            (= (length (signature-type-types t1)) (length (signature-type-types t2)))
-           (every type-equal? (signature-type-types t1) (signature-type-types t2))
+           (for/and ([type1 (in-list (signature-type-types t1))]
+                     [type2 (in-list (signature-type-types t2))])
+             (type-equal? type1 type2))
            (type-equal? (signature-type-rest-type/f t1)
                         (signature-type-rest-type/f t2)))
       (and (method-type? t1)
@@ -457,22 +443,16 @@
   [(define (write-proc v port mode)
      ((recur-write-proc mode) `(generic ,(generic-name v)) port))])
 
-(struct method ([name #:mutable] args-type result-type callable [generic/f #:mutable])
+(struct method (args-type result-type callable [generic/f #:mutable])
   #:constructor-name make-method
   #:property prop:procedure
   (lambda (real-m . args)
-    (dbg 'calls "  call-method - checking sig...")
-    ;; TO DO: many times, this check is redundant -- if the method was put
-    ;; into an effective fn., it has already shown its applicability!
-    ;(check-applicable! (method-args-type real-m) args) ; throws error if fails
-    (dbg 'calls "    sig. checked - doing apply")
-    (set-call-context-callable! (*call-context*) real-m)    
+    (set-call-context-callable! (*call-context*) real-m)
     (check-type! (apply (method-callable real-m) args)
                  (method-result-type real-m)))
   #:methods gen:custom-write
   [(define (write-proc v port mode)
-     ((recur-write-proc mode) `(method ,(method-name v) ,(method-args-type v)
-                                       => ,(method-result-type v))
+     ((recur-write-proc mode) `(method ,(method-args-type v) => ,(method-result-type v))
                               port))])
 
 (define (standard-method-applicable? m vals)

@@ -8,10 +8,7 @@
          add-before-method
          add-after-method
          defgeneric
-         defmethod
-         method
-         gfmethod
-         make-signature-type
+         method       
          and?
          or?
          compose?

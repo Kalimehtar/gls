@@ -11,7 +11,8 @@
          add-around-method
          add-before-method
          add-after-method
-         *return-value*)
+         *return-value*
+         standard-method-selector)
 ;; callables.scm
 ;; Definitions of methods, generics, signatures, and the functions that call them.
 
@@ -203,9 +204,7 @@
 		       (format "primary generic for ~a" (generic-name gf))
 		       (generic-methods gf)))
 	       (primary-method
-		(make-method (format "primary method for ~a"
-				     (generic-name gf))
-			     <primary> #t ; args-type, result-type
+		(make-method <primary> #t ; args-type, result-type
 			     primary-generic gf)) ; callable, generic/f
 	       (before-generic
 		;; no methods yet
@@ -214,9 +213,7 @@
 		 '() before-composer	; methods, composer
 		 (const #t)))		; add-method: allow dupes
 	       (before-method
-		(make-method (format "before method for ~a"
-				     (generic-name gf))
-			     <before> #t ; args-type, result-type
+		(make-method <before> #t ; args-type, result-type
 			     before-generic gf)) ; callable, generic/f
 	       (after-generic
 		;; no methods yet
@@ -225,9 +222,7 @@
 		 '() after-composer	; methods, composer
 		 (const #t)))		; add-method: allow dupes
 	       (after-method
-		(make-method (format "after method for ~a"
-				     (generic-name gf))
-			     <after> #t ; args-type, result-type
+		(make-method <after> #t ; args-type, result-type
 			     after-generic gf))) ; callable, generic/f
 	  (set-generic-methods! gf (list before-method primary-method after-method))
 	  (set-generic-composer! gf method-combination-composer))))
@@ -252,7 +247,7 @@
 (define (primary-generic gf) (find-hidden-generic gf cadr 'primary))
 (define (after-generic gf) (find-hidden-generic gf caddr 'after))
 
-(define (add-primary-method gf m)
+(define (add-method gf m)
   (let ((primary-gf (primary-generic gf)))
     (when (generic-add-method-check/f primary-gf)
 	((generic-add-method-check/f primary-gf) m gf))
@@ -260,49 +255,43 @@
     (set-generic-methods!
      primary-gf (cons m (generic-methods primary-gf)))))
 
-;; add-method is synonym for add-primary-method
-(define add-method add-primary-method)
-
 (define (add-method* gf . ms)
-  (for-each (curry add-primary-method gf)
-	    ms))
+  (for ([m (in-list ms)])
+     (add-method gf m)))
 
-(define (remove-primary-method gf sig)
-  (let ((primary-gf (primary-generic gf)))
-    (cond
-     ((findf (λ (m1) 
-               (type-equal? sig (method-args-type m1)))
-             (generic-methods primary-gf))
-      => (λ (m)
-           (set-generic-methods!
-            primary-gf
-            (remove m (generic-methods primary-gf)))))
-     (else
-      (error 'remove-primary-method "Could not find method matching ~a for generic ~a" sig gf)))))
+(define (remove-method gf m)
+  (define sig (method-args-type m))
+  (define primary-gf (primary-generic gf))
+  (cond
+    [(findf (λ (m1) 
+              (type-equal? sig (method-args-type m1)))
+            (generic-methods primary-gf))
+     => (λ (m)
+          (set-generic-methods!
+           primary-gf
+           (remove m (generic-methods primary-gf))))]
+    [else
+     (error 'remove-primary-method "Could not find method matching ~a for generic ~a" sig gf)]))
 
-(define (replace-primary-method gf sig m)
-  (remove-primary-method gf sig)
-  (add-primary-method gf m))
+(define (replace-method gf m)
+  (remove-method gf m)
+  (add-method gf m))
   
-(define replace-method replace-primary-method)
-
 ;; remove-method is synonym for remove-primary-method
-(define remove-method remove-primary-method)
 
 (define (add-before-method gf m)
   (make-generic-two-level! gf)
-  (add-primary-method (before-generic gf)
-		      m))
+  (add-method (before-generic gf) m))
 
-(define (remove-before-method gf sig)
-  (remove-primary-method (before-generic gf) sig))
+(define (remove-before-method gf m)
+  (remove-method (before-generic gf) m))
 
 (define (add-after-method gf m)
   (make-generic-two-level! gf)
-  (add-primary-method (after-generic gf) m))
+  (add-method (after-generic gf) m))
 
-(define (remove-after-method gf sig)
-  (remove-primary-method (after-generic gf) sig))
+(define (remove-after-method gf m)
+  (remove-method (after-generic gf) m))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -330,7 +319,7 @@
 ;; take a "two-level" generic and turn it into a three-level generic.
 (define (make-generic-arounded! gf)
   (make-generic-two-level! gf)
-  (when (not (eq? (generic-composer gf) around-composer))
+  (unless (eq? (generic-composer gf) around-composer)
     ;(displayln "making generic aroundable.")
     ;; default-around will call before-primary-around methods as usual
     (let* ((default-generic		; callable of default around method
@@ -341,7 +330,6 @@
               standard-add-method-check))
            (default-around-method
              (make-method
-              (format "default around method for ~a" (generic-name gf))
               <default-around-type> #t ; args-type, result-type
               default-generic gf)))	; callable, generic/f
       (set-generic-methods! gf (list default-around-method))

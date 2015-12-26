@@ -3,19 +3,21 @@
 
 (define (fact x)
   (defgeneric fact0
-    (method ((n (==? 1)) (acc integer?))
+    (method ([n (==? 1)] [acc integer?])
             acc)
-    (method ((n integer?) (acc integer?))
+    (method ([n integer?] [acc integer?])
             (fact0 (- n 1) (* acc n))))
   (fact0 x 1))
 
 (check-equal? (fact 5) 120)
 
-(defmethod (m1 (i integer?))
-  (format "m1<integer>(~a)" i))
+(define m1
+  (method ((i integer?))
+          (format "m1<integer>(~a)" i)))
 
-(defmethod (m2 (i integer?) (s string?))
-  (format "m2, i=~a, s=~a" i s))
+(define m2
+  (method ([i integer?] [s string?])
+          (format "m2, i=~a, s=~a" i s)))
 
 (check-equal? (m1 2) "m1<integer>(2)")
 
@@ -36,7 +38,6 @@
                     (call-next-method)))
 
 (replace-method g1
-                (make-signature-type #f integer?)
                 (method ((i integer?))
                         (displayln (format "new g1<int>(~a)" i))
                         (call-next-method)))
@@ -48,11 +49,11 @@
   (check-equal? res "g1<number>(3)")
   (check-equal? output "new g1<int>(3)\n"))
 
-(defmethod (bm1 x)
-  (displayln (format "in bm1, got ~a" x)))
+(define bm1 (method (x)
+                    (displayln (format "in bm1, got ~a" x))))
 
-(defmethod (bm2 (x integer?))
-  (displayln (format "in bm2 <int>, got ~a" x)))
+(define bm2 (method ([x integer?])
+                    (displayln (format "in bm2 <int>, got ~a" x))))
 
 (add-before-method g1 bm1)
 (add-before-method g1 bm2)
@@ -102,72 +103,7 @@
 ;;;; IMPORTANT: following examples are copied from original version of GLOS
 ;;;;            in GLS there are no defrectype, you may use racket/class classes instead
 
-;; moving on:
-;,load exceptions.scm typed-containers.scm
 #|
-(set! *dbg-tags* '(types calls exceptions))
-
-(define-syntax test2
-  (syntax-rules ()
-    ((test2 e1 e2)
-     (let ((v1 e1)
-	   (v2 e2))
-       (if (not (equal? v1 v2))
-	   (begin
-	     (cl-format #t "~%Test failed: ~a -> ~a not eq ~a -> ~a ~%" 'e1 v1 'e2 v2)
-	     #f)
-	   (begin
-	     (cl-format #t ".")
-	     #t))))))
-
-(defmethod (m1 (i <integer>))
-  (cl-format #t "m1<integer>(~a)~%" i)
-  i)
-
-(defmethod (m2 (i <integer>) (s string?))
-  (cl-format #t "m2, i=~a, s=~a~%" i s)
-  (list i s))
-
-(m1 2)
-
-(defgeneric g1 m1
-  (method ((n number?))
-	  (cl-format #t "g1<number>(~a)~%" n)
-	  n)
-  (method ((s string?))
-	  (cl-format #t "g1string?(~a)~%" s)
-	  s))
-  
-(g1 "hi")
-(g1 2)
-(g1 2.1)
-
-(add-method
- g1
- (method ((x (and? <integer> even?)))
-	 (cl-format #t "g1 on even int, (~a)~%" x)
-	 (call-next-method)))
-
-(replace-method
- g1 (make-signature-type #f <integer>)
- (method ((i <integer>))
-	 (cl-format #t "new g1<int>(~a)~%" i)
-	 (call-next-method)))
-
-(test2 (g1 "hi") "hi")
-(test2 (g1 3) 3)
-
-(defmethod (bm1 x)
-  (cl-format #t "in bm1, got ~a~%" x))
-
-(defmethod (bm2 (x <int>))
-  (cl-format #t "in bm2 <int>, got ~a~%" x))
-
-(add-before-method g1 bm1)
-(add-before-method g1 bm2)
-
-(g1 "hi")
-(g1 3)
 
 (add-after-method
  g1 (method ((x string?))
