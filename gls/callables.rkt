@@ -103,8 +103,6 @@
             #f
             app-ms))))
 
-;; TO DO: call-next-method is too expensive.
-;; keeps the current call context, but mutates chain and next
 (define (call-next-method)
   (define the-context (*call-context*))
   (cond
@@ -121,14 +119,8 @@
              (append (cdr chain-rest)
                      (call-context-next the-context))
              (call-context-argvals the-context)))
-          ;; keep the current context -- hack it             
-          (set-call-context-chain! the-context (call-context-chain new-context))
-          (set-call-context-next! the-context (call-context-next new-context))
-          ;; callable is set by the individual method (in call-method)
-          ;; argvals stay the same
-          (set-call-context-executor! the-context (call-context-executor new-context))
-          ;; now go
-          ((call-context-executor new-context)))]
+          (parameterize ([*call-context* new-context])
+            ((call-context-executor new-context))))]
     [else
      (error "call-next-method called while not in a chain")]))
 

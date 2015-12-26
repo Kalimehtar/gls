@@ -1,7 +1,8 @@
 #lang racket/base
 (require "utils.rkt"
          racket/function
-         (prefix-in c: racket/class))
+         (prefix-in c: racket/class)
+         racket/contract)
 
 (provide (struct-out generic)
          (except-out (struct-out method) method)
@@ -17,7 +18,12 @@
          or?
          negate?
          compose?
-         ==?)
+         ==?
+         type?
+         predicate?)
+
+(define predicate? (-> any/c boolean?))
+(define type? (or/c boolean? predicate? c:class?))
 
 (module+ test
   (require rackunit racket/function))
@@ -146,7 +152,10 @@
   [(define (write-proc v port mode)
      ((recur-write-proc mode) `(compose? ,@(compose-type-types v)) port))])
 
-(define (compose? . types) (compose-type types))
+(define (compose? . types)
+  (if (cdr types)
+      (compose-type types)
+      (car types)))
 
 (define (compose-subtype? type1 type2)
   (define types1 (compose-type-types type1))
@@ -160,13 +169,15 @@
 ;;
 
 (struct negate-type (type)
-  #:constructor-name negate?
   #:property prop:procedure
   (lambda (type x)
     (not (isa? x (negate-type-type type))))
   #:methods gen:custom-write
   [(define (write-proc v port mode)
      ((recur-write-proc mode) `(negate? ,@(compose-type-types v)) port))])
+
+(define (negate? t)
+  (if (boolean? t) (not t) (negate-type t)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

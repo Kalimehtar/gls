@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket gls) gls scribble/eval)
+@(require (for-label racket gls) gls (prefix-in gls: gls/types) scribble/eval)
 
 @title{GLS: Generic Little System}
 @author{@(author+email "Roman Klochkov" "kalimehtar@mail.ru")}
@@ -32,50 +32,84 @@ with @racket[gls] may be solved as
   (set-ellipse-v! c 20)
   (circle-radius c))
 
-So @racket[c] is a circle only when both axis are equal.
+So @racket[_c] is a circle only when both axis are equal.
 
 @section{Base syntax}
 
-@defform[(method name body ...+)]
+Type may be either predicate (function with one argument, returning @racket[boolean?]), @racket[class?] or
+@racket[boolean?]. Type #t means `any type`. Type #f means `type without values`. For @racket[class?] --
+type values -- instances of the class. And for a predicate type values --- all values, on which predicate
+returns #t.
+
+If you use predicates, that defines subtypes, you should explicitly set one type to by
+subtype of another type.
+
+@defproc[(subtype! [subtype gls:predicate?] [supertype gls:predicate?]) void?]{
+Sets @racket[_subtype] to be subtype of @racket[_supertype] for dispatching.
+ So, if a generic has a method with @racket[_subtype] argument and
+ a method with @racket[_supertype] argument and both a acceptable for some values,
+ then the method with @racket[_subtype] argument will be executed.
+
+Beware, that @racket[subtype!] sets subtypes on values of predicates, not predicate bodies.
+ So don't put (lambda ...) in it. @racket[lambda] on each call make new procedure
+ even when calles with the same body.}
+
+@defform*[((method (arg ...) body ...+)
+           (method (arg ...) => result body ...+))
+          #:contracts ([arg (or/c boolean? procedure?)]
+                       [result (or/c boolean? procedure?)])]{
+Produces a method for GLS. }
 
 @defform[(defgeneric name method ...)]
+{Defines generic with given name and methods.}
+
+@(interaction
+  (define =1 (λ (x) (equal? x 1)))
+  (subtype! =1 integer?)
+  (define default (method ([n =1]) 1))  
+  (defgeneric fact
+    default
+    (method ([n integer?])
+            (* (fact (- n 1)) n)))
+
+  (fact 5))
 
 @section{Dynamic change methods}
 
-@defproc[(add-method [generic generic?] [method method?]) any]
+@defproc[(add-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(remove-method [generic generic?] [method method?]) any]
+@defproc[(remove-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(replace-method [generic generic?] [method method?]) any]
+@defproc[(replace-method [generic gls:generic?] [method gls:method?]) any]
 
 @section{Augmenting methods}
 
-@defproc[(add-before-method [generic generic?] [method method?]) any]
+@defproc[(add-before-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(remove-before-method [generic generic?] [method method?]) any]
+@defproc[(remove-before-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(replace-before-method [generic generic?] [method method?]) any]
+@defproc[(replace-before-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(add-after-method [generic generic?] [method method?]) any]
+@defproc[(add-after-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(remove-after-method [generic generic?] [method method?]) any]
+@defproc[(remove-after-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(replace-after-method [generic generic?] [method method?]) any]
+@defproc[(replace-after-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(add-around-method [generic generic?] [method method?]) any]
+@defproc[(add-around-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(remove-around-method [generic generic?] [method method?]) any]
+@defproc[(remove-around-method [generic gls:generic?] [method gls:method?]) any]
 
-@defproc[(replace-around-method [generic generic?] [method method?]) any]
+@defproc[(replace-around-method [generic gls:generic?] [method gls:method?]) any]
 
 @section{Combinators}
 
-@defproc[(and? [type (or boolean? procedure?)] ...) (or boolean? procedure?)]
+@defproc[(and? [type gls:type?] ...) gls:type?]
 
-@defproc[(or? [type (or boolean? procedure?)] ...) (or boolean? procedure?)]
+@defproc[(or? [type gls:type?] ...) gls:type?]
 
-@defproc[(compose? [type (or boolean? procedure?)] ...) procedure?]
+@defproc[(compose? [type gls:type?] ...) gls:predicate?]
 
-@defproc[(==? [value any/c]) procedure?]
+@defproc[(==? [value any/c]) gls:predicate?]
 
-@defproc[(negate? [type (or boolean? procedure?)]) procedure?]
+@defproc[(negate? [type gls:type?]) gls:type?]
