@@ -19,7 +19,7 @@ href="https://github.com/gregsgit/glos">GLOS</a>, that was witten for
 scheme48. It has the same API, but without implemetation of own object system 
 (glos-records). So GLS is not "generic little object system", but simply
 "generic little system". But I added support for racket/class: you may use
-class intead of type predicate and GLS corretly supports subtypes
+class instead of type predicate and GLS correctly supports subtypes
 (subclasses).
 
 Sorry for bad documentation: for API look into <a href=https://github.com/Kalimehtar/gls/blob/master/gls/main.rkt> main.rkt</a>, for examples of use
