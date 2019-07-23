@@ -30,5 +30,3 @@ href="https://github.com/gregsgit/glos/blob/master/ref-dyn-patterns.pdf">ref-dyn
 
 Also, slides in <a href="https://github.com/gregsgit/glos/blob/master/proglangsandsofteng.pdf">proglangsandsofteng</a> work
 through some examples using GLOS.
-
-P.S. If at least two men need this, I'll write documentation and try to develop stable extensible API. Put your requests to issues.
