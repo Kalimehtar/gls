@@ -10,7 +10,7 @@
 @section{Introduction. Purpose of the library}
 
 This library allows to make generics on arbitrary predicates. Generic is a function,
-that called with different dunction bodies, depending upon its argument types, and these
+that called with different function bodies, depending upon its argument types, and these
 bodies may be changed at any time. Classic implementation is
 @(hyperlink "https://wikipedia.org/wiki/CLOS" "CLOS").
 
